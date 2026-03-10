@@ -1,0 +1,20 @@
+# 招商银行新直联（免前置）配置示例
+# 测试环境：http://cdctest.cmburl.cn/cdcserver/api/v2
+# 生产环境：https://cdc.cmbchina.com/cdcserver/api/v2
+
+domain: "http://cdctest.cmburl.cn/cdcserver/api/v2"
+userid: "N000000000"
+sm4_key: "0123456789abcdef"          # 16位字符串或32位HEX
+sm4_notify_key: ""                  # 主动通知SM4密钥，留空则回退 sm4_key
+sm2_private_key: "BASE64_OR_PEM"     # 私钥（PEM或Base64）
+sm2_bank_public_key: "BASE64_OR_PEM" # 招行公钥（PEM或Base64）
+sm2_notify_public_key: ""            # 主动通知验签公钥，留空则回退 sm2_bank_public_key
+account_nbr: "755000000000000"      # 收款账号（交易查询/回单下载）
+
+# 超时与并发
+# 注意：YAML 中写 30 可能被解析为 30ns，本 SDK 会自动按秒纠正
+# 推荐明确写成 "30s" 或保留数字 30
+
+timeout: 30
+max_concurrent: 5
+debug: false
