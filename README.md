@@ -8,7 +8,8 @@
 - 账户交易查询（`trsQryByBreakPoint`），支持自动续传
 - 单笔回单查询（`DCSIGREC`），支持 PDF/OFD
 - 企银支付单笔经办（`BB1PAYOP`）
-- 财务变动通知处理（`YQN01010`）
+- 企银支付业务查询（`BB1PAYQR`）
+- 财务变动通知（`YQN01010`）与支付结果通知（`YQN02030`）
 - 并发控制（默认最多 5 个并发请求）
 - **可插拔日志系统**（支持自定义日志实例，兼容 zap/logrus/slog 等）
 - 完整的错误处理与类型安全 API
@@ -226,6 +227,47 @@ func handleCMBNotification(c *gin.Context) {
 
     c.JSON(200, gin.H{"status": "ok"})
 }
+```
+
+### 企银支付业务查询
+
+```go
+reqBody := &cmb.PaymentQueryRequestBody{
+    X1: []cmb.PaymentQueryX1{
+        {
+            BusCod: "N02030",
+            YurRef: "YOUR_YUR_REF_123",
+        },
+    },
+}
+
+respBody, head, err := client.PaymentQuery(reqBody, "")
+if err != nil {
+    log.Fatal(err)
+}
+
+if len(respBody.Z1) > 0 {
+    res := respBody.Z1[0]
+    fmt.Printf("状态: %s, 结果: %s, 原因: %s\n", res.ReqSts, res.RtnFlg, res.RtnNar)
+}
+```
+
+### 支付结果通知处理 (YQN02030)
+
+支持解析业务完成通知 (`FINS`) 和支付退票通知 (`FINB`)。
+
+```go
+err := client.HandleNotification(data, func(msg *cmb.NotificationMessage) error {
+    switch msg.MsgTyp {
+    case "FINS": // 业务完成
+        info := msg.MsgDat.TrsInfo
+        fmt.Printf("业务%s完成，金额: %s\n", info.YurRef, info.TrsAmt)
+    case "FINB": // 支付退票
+        back := msg.MsgDat.BackInfo
+        fmt.Printf("业务%s退票，原因: %s\n", back.YurRef, back.RtnNar)
+    }
+    return nil
+})
 ```
 
 ## 文档

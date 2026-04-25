@@ -218,6 +218,38 @@ MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAE...
 	}
 
 	// ==========================================
+	// 4.5 示例：企银支付业务查询（BB1PAYQR）
+	// ==========================================
+	fmt.Println("\n--- 企银支付业务查询 ---")
+
+	queryReqBody := &cmb.PaymentQueryRequestBody{
+		X1: []cmb.PaymentQueryX1{
+			{
+				BusCod: "N02030",
+				YurRef: "YREF20240424190000", // 替换为之前经办使用的参考号
+			},
+		},
+	}
+
+	qResp, qHead, err := client.PaymentQuery(queryReqBody, "")
+	if err != nil {
+		log.Printf("查询支付业务失败: %v", err)
+	} else {
+		fmt.Printf("请求ID: %s\n", qHead.ReqID)
+		if len(qResp.Z1) > 0 {
+			res := qResp.Z1[0]
+			fmt.Printf("参考号: %s, 流程实例号: %s\n", res.YurRef, res.ReqNbr)
+			fmt.Printf("处理状态: %s, 处理结果: %s, 失败原因: %s\n", res.ReqSts, res.RtnFlg, res.RtnNar)
+
+			if res.IsSuccess() {
+				fmt.Println("状态：支付已成功")
+			} else if res.IsFailed() {
+				fmt.Println("状态：支付已失败")
+			}
+		}
+	}
+
+	// ==========================================
 	// 5. 示例：财务变动通知处理（YQN01010）
 	// ==========================================
 	fmt.Println("\n--- 处理财务变动通知 ---")
@@ -258,7 +290,46 @@ MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAE...
 	if err != nil {
 		log.Printf("处理通知失败: %v", err)
 	} else {
-		fmt.Println("通知处理成功")
+	}
+
+	// ==========================================
+	// 6. 示例：支付结果通知处理（YQN02030）
+	// ==========================================
+	fmt.Println("\n--- 处理支付结果通知 ---")
+
+	// 模拟接收到的支付结果通知数据 (FINS - 业务完成)
+	mockResultJSON := `{
+		"msgtyp": "FINS",
+		"msgdat": {
+			"trsInfo": {
+				"reqNbr": "5480037057",
+				"busCod": "N02030",
+				"yurRef": "YREF20240424190000",
+				"reqSts": "FIN",
+				"rtnFlg": "S",
+				"trsAmt": "1.05"
+			}
+		}
+	}`
+
+	// 支付结果处理逻辑
+	resultHandler := func(msg *cmb.NotificationMessage) error {
+		switch msg.MsgTyp {
+		case "FINS":
+			info := msg.MsgDat.TrsInfo
+			fmt.Printf("收到支付完成通知: 参考号=%s, 金额=%s, 结果=%s\n", info.YurRef, info.TrsAmt, info.RtnFlg)
+		case "FINB":
+			back := msg.MsgDat.BackInfo
+			fmt.Printf("收到支付退票通知: 参考号=%s, 原因=%s\n", back.YurRef, back.RtnNar)
+		}
+		return nil
+	}
+
+	err = client.HandleNotification([]byte(mockResultJSON), resultHandler)
+	if err != nil {
+		log.Printf("处理结果通知失败: %v", err)
+	} else {
+		fmt.Println("结果通知处理成功")
 	}
 
 	fmt.Println("\n所有示例执行完毕")
